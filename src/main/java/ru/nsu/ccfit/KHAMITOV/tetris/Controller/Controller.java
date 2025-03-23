@@ -1,8 +1,11 @@
 package ru.nsu.ccfit.KHAMITOV.tetris.Controller;
 
 import ru.nsu.ccfit.KHAMITOV.tetris.Model.Board.Board;
+import ru.nsu.ccfit.KHAMITOV.tetris.Model.Score.Score;
+import ru.nsu.ccfit.KHAMITOV.tetris.Model.Score.ScoreTable;
+import ru.nsu.ccfit.KHAMITOV.tetris.Model.Setting.Setting;
 import ru.nsu.ccfit.KHAMITOV.tetris.Model.Tetromino.Tetromino;
-import ru.nsu.ccfit.KHAMITOV.tetris.View.RenderBoard;
+import ru.nsu.ccfit.KHAMITOV.tetris.View.RenderGame;
 import ru.nsu.ccfit.KHAMITOV.tetris.View.RenderMenu;
 
 import javax.swing.*;
@@ -10,31 +13,35 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 
-public class Controller {
-    private final int TARGET_FPS = 200;
-    private double OPTIMAL_TIME = 1_000_000_000.0 / TARGET_FPS;
+import static java.lang.Math.pow;
 
-    private long lastMoveTime = 0;
-    private long lastRotationTime = 0;
-    private long lastDropTime = 0;
-    private long moveDelay = 110;  // 150 мс перед началом
-    private long dropDelay = 150;// Начальное время падения (1 сек)
+public class Controller {
     private double delta;
     private long lastTime;
+    private static long lastMoveTime = 0;
+    private static long lastRotationTime = 0;
+    private static long lastDropTime = 0;
+    private double dropDelay = Setting.getStartDropDelay();
+    private int lvl = 1;
 
     private RenderMenu view;
     private JFrame frame;
     private Board board;
-    private RenderBoard renderBoard;
+    private RenderGame renderGame;
     private Tetromino tetromino;
     private Queue<Integer> queueOrdertetromino = new LinkedList<>();
     private Queue<Integer> bofferQueueOrdertetromino = new LinkedList<>();
 
     private boolean gameStateChanged = false;
     private boolean isGameStateChanged = true;
+    private String nickname;
+    private Score score = new Score();
 
     public Controller(RenderMenu menu, JFrame frame){
         this.view = menu;
@@ -49,7 +56,17 @@ public class Controller {
         view.getTableButton().addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                showTable();
+                try {
+                    showTable();
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        });
+        view.getOkButton().addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                OkNikcname();
             }
         });
         view.getExitButton().addActionListener(new ActionListener() {
@@ -62,35 +79,61 @@ public class Controller {
 
     private void startGame() {
         // Логика начала игры
-        board = new Board(21,15);
+        view.showNicknamePanel();
+    }
+
+    // Показать таблицу (возможно, таблица с результатами)
+    private void showTable() throws IOException {
+        frame.setSize(Setting.getMenuSizewight(), Setting.getMenuSizeHeight());
+        String[][] table = DataInString(Score.ReadRecords());
+        JFrame tableFrame = new JFrame("Таблица Очков");
+        tableFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        tableFrame.setSize(Setting.getTableSizeWight(), Setting.getTableSizeHeight());
+        tableFrame.setLocationRelativeTo(null);
+        tableFrame.add(view.ReadTableScore(table));
+        tableFrame.setVisible(true);
+    }
+
+    private void OkNikcname() {
+        nickname = view.getNickname();
+        if (nickname.isEmpty()) {
+            nickname = "Unknown ";
+            LocalDateTime currentDateTime = LocalDateTime.now();
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            nickname +=  currentDateTime.format(formatter);;
+        }
+
+        board = new Board(Setting.getHeightBoard(),Setting.getWidthBoard());
         isGameStateChanged = true;
         queueOrdertetromino.clear();
         view.clearBoard();
 
-        queueOrdertetromino = FillingQueue(7);
+        queueOrdertetromino = FillingQueue(Setting.getNambersTetromino());
 
-        bofferQueueOrdertetromino = FillingQueue(7);
+        bofferQueueOrdertetromino = FillingQueue(Setting.getNambersTetromino());
 
-        tetromino = new Tetromino(queueOrdertetromino.poll(), 10, -3);
+        tetromino = new Tetromino(queueOrdertetromino.poll(), board.getWidth()/2, -3);
         tetromino.setNextTetromino(queueOrdertetromino.peek());
-        renderBoard = new RenderBoard(board, tetromino);
-        renderBoard.EndGameText();
+        renderGame = new RenderGame(board, tetromino);
+        renderGame.EndGameText();
         GameInputHandler inputHandler = new GameInputHandler();
 
         frame.addKeyListener(inputHandler);
         frame.setFocusable(true);
 
-        view.addBoard(renderBoard);
-        frame.setSize((board.getWidth()+6)*30, (board.getHeight()+3)*30);
+        view.addBoard(renderGame);
+        frame.setSize((board.getWidth()+6)*Setting.getCellSize(), (board.getHeight()+3)*Setting.getCellSize());
         frame.setLocationRelativeTo(null);
 
         view.showGamePanel();
-        new Thread(() -> GameLoop(inputHandler)).start();
-    }
-
-    // Показать таблицу (возможно, таблица с результатами)
-    private void showTable() {
-
+        new Thread(() -> {
+            try {
+                GameLoop(inputHandler);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 
     // Завершение игры
@@ -98,10 +141,10 @@ public class Controller {
         System.exit(0);
     }
 
-    private void GameLoop(GameInputHandler inputHandler){
+    private void GameLoop(GameInputHandler inputHandler) throws IOException {
         while (isGameStateChanged){
             long now = System.nanoTime();
-            delta += (now - lastTime) / OPTIMAL_TIME;
+            delta += (now - lastTime) / Setting.getOPTIMAL_TIME();
             lastTime = now;
 
 
@@ -116,15 +159,25 @@ public class Controller {
             }
         }
         try {
-            Thread.sleep(5000);
+            Thread.sleep(3000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        score.WriteRecord(nickname);
+
         SwingUtilities.invokeLater(() -> view.showMenuPanel());
+        frame.setSize(Setting.getMenuSizewight(), Setting.getMenuSizeHeight());
     }
 
     private void Update(GameInputHandler inputHandler){
         long now = System.currentTimeMillis();
+
+        if(score.getScore() > Setting.getScoreForNextLvl()*lvl){
+            lvl++;
+            dropDelay = Setting.getStartDropDelay() * pow(Setting.getDelayReductionFactor(), lvl-1);
+        }
+
         Drop(now);
         Move(inputHandler);
 
@@ -135,19 +188,25 @@ public class Controller {
 
     private void Move(GameInputHandler inputHandler){
         long now = System.currentTimeMillis();
-        if (inputHandler.isLeft()  && now - lastMoveTime > moveDelay) {
+        if (inputHandler.isLeft()  && now - lastMoveTime > Setting.getMoveDelay()) {
             if(board.isPossiblePut(tetromino.getTetromineMatrix(), tetromino.getX()-1, tetromino.getY())) {
-                tetromino.MoveLeftAndRight(1);
+                tetromino.MoveLeftAndRight(Setting.getMoveLeft());
                 lastMoveTime = now;
                 gameStateChanged = true;
             }
         }
-        if (inputHandler.isRight()  && now - lastMoveTime > moveDelay) {
+        if (inputHandler.isRight()  && now - lastMoveTime > Setting.getMoveDelay()) {
             if(board.isPossiblePut(tetromino.getTetromineMatrix(), tetromino.getX()+1, tetromino.getY())){
-                tetromino.MoveLeftAndRight(2);
+                tetromino.MoveLeftAndRight(Setting.getMoveRight());
                 lastMoveTime = now;
                 gameStateChanged =true;
             }
+        }
+        if(inputHandler.isSpace() && now - lastMoveTime > Setting.getFastDownDelay()) {
+            while(board.isPossiblePut(tetromino.getTetromineMatrix(), tetromino.getX(), tetromino.getY() + 1)) { // Проверяем на следующий шаг
+                tetromino.setY(tetromino.getY() + 1);
+            }
+            lastMoveTime = now;
         }
     }
     private void Drop(long now){
@@ -158,13 +217,13 @@ public class Controller {
         }
     }
     private void Rotation(GameInputHandler inputHandler, long now){
-        if (inputHandler.isUp() && now - lastRotationTime > moveDelay) {
-            tetromino.Rotation(board,2);
+        if (inputHandler.isUp() && now - lastRotationTime > Setting.getMoveDelay()) {
+            tetromino.Rotation(board,Setting.getRotationRight());
             lastRotationTime = now;
             gameStateChanged = true;
         }
-        if (inputHandler.isDown() && now - lastRotationTime > moveDelay) {
-            tetromino.Rotation(board,1);
+        if (inputHandler.isDown() && now - lastRotationTime > Setting.getMoveDelay()) {
+            tetromino.Rotation(board,Setting.getRotationLeft());
             lastRotationTime = now;
             gameStateChanged = true;
         }
@@ -180,7 +239,7 @@ public class Controller {
 
             }
 
-            board.AllLine();
+            score.addScore(board.AllLine() * 50);
 
             tetromino.setTetromineMatrix(queueOrdertetromino.poll());
             tetromino.setX(10);
@@ -194,7 +253,7 @@ public class Controller {
             gameStateChanged = true;
 
             if (board.isEnd()) {
-                renderBoard.EndGame();
+                renderGame.EndGame();
                 isGameStateChanged = false;
             }
         }
@@ -210,7 +269,7 @@ public class Controller {
     }
 
     public class GameInputHandler implements KeyListener {
-        private boolean up, down, left, right;
+        private boolean up, down, left, right, space;
 
         @Override
         public void keyPressed(KeyEvent e) {
@@ -220,6 +279,7 @@ public class Controller {
                 case KeyEvent.VK_S, KeyEvent.VK_DOWN -> down = true;
                 case KeyEvent.VK_A, KeyEvent.VK_LEFT -> left = true;
                 case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> right = true;
+                case KeyEvent.VK_SPACE -> space = true;
             }
         }
 
@@ -231,6 +291,7 @@ public class Controller {
                 case KeyEvent.VK_S, KeyEvent.VK_DOWN -> down = false;
                 case KeyEvent.VK_A, KeyEvent.VK_LEFT -> left = false;
                 case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> right = false;
+                case KeyEvent.VK_SPACE -> space = false;
             }
         }
 
@@ -242,6 +303,19 @@ public class Controller {
         public boolean isDown() { return down; }
         public boolean isLeft() { return left; }
         public boolean isRight() { return right; }
+        public boolean isSpace() { return space; }
+
     }
 
+    private String[][] DataInString(ScoreTable table){
+        String[] nick = table.getNickname().toArray(new String[0]);
+        ArrayList<Integer> score = table.getScore();
+        String[][] result = new String[score.size()][2];
+        for(int i = 0; i<score.size(); i++){
+            result[i][0] = nick[i];
+            result[i][1] = String.valueOf(score.get(i));
+        }
+
+        return result;
+    }
 }

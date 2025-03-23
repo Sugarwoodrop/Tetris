@@ -69,9 +69,7 @@ public class Tetromino {
     public Integer getY(){
         return y;
     }
-    public int getAngleRotation() {
-        return angleRotation;
-    }
+
     public void Rotation(Board board, int leftOrRight){
         int angleAfter = setAngleRotation(leftOrRight);
         List<Integer> tetromine = RotationSystem.RotationTetromine(tetromineMatrix,leftOrRight);

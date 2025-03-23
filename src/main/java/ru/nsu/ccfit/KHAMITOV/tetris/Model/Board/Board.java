@@ -1,5 +1,7 @@
 package ru.nsu.ccfit.KHAMITOV.tetris.Model.Board;
 
+import ru.nsu.ccfit.KHAMITOV.tetris.Model.Setting.Setting;
+
 import java.util.List;
 
 import static java.lang.Math.sqrt;
@@ -79,7 +81,7 @@ public class Board {
         for(int i = 0; i < height; i++){
             int blocks = 0;
             for(int j = 0; j < width; j++){
-                if(field[i][j] == 1){
+                if(field[i][j] == Setting.getBlockDesignation()){
                     blocks++;
                 }
                 if(blocks == width){
@@ -94,7 +96,7 @@ public class Board {
     }
     public int[][] DeleteLine(int deliteline){
         for(int j = 0; j < width; j++) {
-            field[deliteline][j] = 0;
+            field[deliteline][j] = Setting.getBoardDesignation();
         }
         int[][] newfield = new int[height][width];
         for(int j = 1; j <= deliteline; j++){
@@ -105,4 +107,5 @@ public class Board {
         }
         return  newfield;
     }
+
 }

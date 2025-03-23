@@ -1,5 +1,6 @@
 package ru.nsu.ccfit.KHAMITOV.tetris.Model.Rotetion;
 import ru.nsu.ccfit.KHAMITOV.tetris.Model.Rotetion.table.TableWallKick;
+import ru.nsu.ccfit.KHAMITOV.tetris.Model.Setting.Setting;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,7 @@ public class RotationSystem {
 
         int[][] rotatedMatrix = new int[size][size];
 
-        if (leftOrRight == 1) {
+        if (leftOrRight == Setting.getRotationLeft()) {
             // Поворот на 90 градусов по часовой стрелке
             for (int i = 0; i < size; i++) {
                 for (int j = 0; j < size; j++) {
