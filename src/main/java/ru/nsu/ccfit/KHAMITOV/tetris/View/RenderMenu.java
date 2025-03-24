@@ -39,7 +39,7 @@ public class RenderMenu extends JPanel{
 
         JLabel label = new JLabel("Enter your nickname:");
         readNickname.add(label);
-        nicknameField = new JTextField(20);
+        nicknameField = new JTextField(10);
         readNickname.add(nicknameField);
         readNickname.add(OkButton);
 

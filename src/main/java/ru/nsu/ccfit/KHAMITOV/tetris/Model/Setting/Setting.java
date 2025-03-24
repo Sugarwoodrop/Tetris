@@ -7,7 +7,8 @@ public class Setting {
     private static final long moveDelay = 110;
     private static final long fastDownDelay = 300;
     private static final double dropStartDelay = 300;
-    private static final double delayReductionFactor = 0.60;
+    private static final double delayRotation = 200;
+    private static final double delayReductionFactor = 0.85;
     private static final int scoreForNextLvl = 300;
 
     private static final int heightBoard = 21;
@@ -30,6 +31,10 @@ public class Setting {
     private static final int rotationRight = 1;
 
     private static final int cellSize = 30;
+
+    public static double getDelayRotation() {
+        return delayRotation;
+    }
 
     public static int getScoreForNextLvl(){
         return scoreForNextLvl;

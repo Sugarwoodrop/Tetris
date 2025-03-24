@@ -59,7 +59,7 @@ public class RenderGame extends JPanel{
         g2d.setColor(mainColor);
         g2d.fillRect(x, y, Setting.getCellSize(), Setting.getCellSize());
 
-        // Добавим светлый блик, чтобы подчеркнуть объем
+        //добавим светлый блик, чтобы подчеркнуть объем
         GradientPaint highlight = new GradientPaint(x, y, new Color(64, 53, 53), x + Setting.getCellSize()-10, y + Setting.getCellSize()-10, new Color(0, 0, 0));
         g2d.setPaint(highlight);
         g2d.fillRoundRect(x, y, Setting.getCellSize(), Setting.getCellSize(), 1, 1); // Используем roundRect для округления углов

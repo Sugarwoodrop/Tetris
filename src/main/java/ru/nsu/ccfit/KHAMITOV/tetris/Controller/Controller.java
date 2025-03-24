@@ -104,6 +104,7 @@ public class Controller {
             nickname +=  currentDateTime.format(formatter);;
         }
 
+        dropDelay = Setting.getStartDropDelay();
         board = new Board(Setting.getHeightBoard(),Setting.getWidthBoard());
         isGameStateChanged = true;
         queueOrdertetromino.clear();
@@ -217,12 +218,12 @@ public class Controller {
         }
     }
     private void Rotation(GameInputHandler inputHandler, long now){
-        if (inputHandler.isUp() && now - lastRotationTime > Setting.getMoveDelay()) {
+        if (inputHandler.isUp() && now - lastRotationTime > Setting.getDelayRotation()) {
             tetromino.Rotation(board,Setting.getRotationRight());
             lastRotationTime = now;
             gameStateChanged = true;
         }
-        if (inputHandler.isDown() && now - lastRotationTime > Setting.getMoveDelay()) {
+        if (inputHandler.isDown() && now - lastRotationTime > Setting.getDelayRotation()) {
             tetromino.Rotation(board,Setting.getRotationLeft());
             lastRotationTime = now;
             gameStateChanged = true;
@@ -242,7 +243,7 @@ public class Controller {
             score.addScore(board.AllLine() * 50);
 
             tetromino.setTetromineMatrix(queueOrdertetromino.poll());
-            tetromino.setX(10);
+            tetromino.setX(board.getWidth()/2);
             tetromino.setY(0);
             if(!queueOrdertetromino.isEmpty()) {
                 tetromino.setNextTetromino(queueOrdertetromino.peek());
